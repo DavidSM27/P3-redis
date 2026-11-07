@@ -53,8 +53,7 @@ class CacheDocumentos:
 
     def invalidar(self, coleccion: str, id_documento) -> bool:
         """Saca el documento de la caché. Devuelve si estaba."""
-        # TODO
-        raise NotImplementedError
+        return self._r.delete(self.clave(coleccion,id_documento)) == 1
 
     def caducidad(self, coleccion: str, id_documento) -> int:
         """Segundos restantes. -1 si no caduca, -2 si no existe."""
