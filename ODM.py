@@ -12,8 +12,12 @@ import pymongo
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
+import redis
 import yaml
 from datetime import datetime
+
+from cache import CacheDocumentos
 
 def getLocationPoint(address: str) -> Point:
     """ 
