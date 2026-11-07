@@ -47,8 +47,9 @@ class CacheDocumentos:
         `get` tiene que devolverlo igual, con los mismos tipos: las fechas como
         fechas y los ObjectId como ObjectId.
         """
-        # TODO
-        raise NotImplementedError
+        texto = json_util.dumps(documento)
+        self._r.set(self.clave(coleccion, id_documento),texto, ex=self.ttl)
+
 
     def invalidar(self, coleccion: str, id_documento) -> bool:
         """Saca el documento de la caché. Devuelve si estaba."""
