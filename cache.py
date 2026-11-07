@@ -8,7 +8,7 @@ import redis
 
 TTL_POR_DEFECTO = 24 * 60 * 60      # 24 horas
 MEMORIA_MAXIMA = "150mb"
-POLITICA_DESALOJO = "volatile-ttl"           # TODO: la política que pide el enunciado
+POLITICA_DESALOJO = "volatile-ttl"
 
 
 class CacheDocumentos:
@@ -21,8 +21,8 @@ class CacheDocumentos:
     def configurar_limite(self, memoria: str = MEMORIA_MAXIMA,
                           politica: str = POLITICA_DESALOJO) -> None:
         """Fija el límite de memoria y la política de desalojo de la caché."""
-        # TODO
-        raise NotImplementedError
+        self._r.config_set("maxmemory", memoria)
+        self._r.config_set("maxmemory-policy", politica or POLITICA_DESALOJO)
 
     @staticmethod
     def clave(coleccion: str, id_documento) -> str:
