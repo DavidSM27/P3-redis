@@ -12,7 +12,7 @@ POLITICA_DESALOJO = "volatile-ttl"
 
 
 class CacheDocumentos:
-    """Caché de documentos con caducidad renovada en cada acceso."""
+    """Caché de documentos con caducidad renovada en cada accceso."""
 
     def __init__(self, cliente: redis.Redis, ttl: int = TTL_POR_DEFECTO):
         self._r = cliente
