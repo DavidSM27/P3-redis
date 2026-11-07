@@ -1,3 +1,4 @@
+
 __author__ = 'Pablo Ramos Criado'
 __students__ = 'David_SanMartin_Mateos_y_Daniel_Lopez_Vallejo'
 
@@ -11,12 +12,8 @@ import pymongo
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from bson.objectid import ObjectId
-from bson.errors import InvalidId
-import redis
 import yaml
 from datetime import datetime
-
-from cache import CacheDocumentos
 
 def getLocationPoint(address: str) -> Point:
     """ 
@@ -102,9 +99,7 @@ class Model:
     _admissible_vars: set[str]
     _location_var: str | None = None
     _db: pymongo.collection.Collection
-    # Caché de documentos compartida por la clase (None = ODM sin caché)
-    _cache: CacheDocumentos | None = None
-    _internal_vars: set[str] = frozenset(('_modified_vars', '_required_vars', '_admissible_vars', '_db', '_data', '_location_var', '_cache'))
+    _internal_vars: set[str] = frozenset(('_modified_vars', '_required_vars', '_admissible_vars', '_db', '_data', '_location_var'))
 
     @classmethod
     def _location_field(cls) -> str | None:
@@ -198,10 +193,6 @@ class Model:
                 self._data[self._location_var + "_loc"] = getLocationPoint(direccion)
             # insert_one añade el _id a self._data
             self._db.insert_one(self._data)
-            # Al insertar, lo que se envía es exactamente lo que queda en
-            # MongoDB, así que se puede dejar cacheado tal cual.
-            if self._cache is not None:
-                self._cache.set(self._db.name, self._data["_id"], self._data)
         else:
             # TODO (paso 5): actualizar solo los campos modificados
             if not self._modified_vars:
@@ -212,11 +203,6 @@ class Model:
                 cambios[self._location_var + "_loc"] = getLocationPoint(cambios[self._location_var])
                 self._data[self._location_var + "_loc"] = cambios[self._location_var + "_loc"]
             self._db.update_one({"_id": self._data["_id"]}, {"$set": cambios})
-            # Al actualizar se INVALIDA, no se reescribe: en MongoDB puede haber
-            # campos que este objeto no conoce y cachearlo dejaría en la caché
-            # una versión incompleta. El próximo find_by_id leerá de MongoDB.
-            if self._cache is not None:
-                self._cache.invalidar(self._db.name, self._data["_id"])
         self._modified_vars.clear()
 
     def delete(self) -> None:
@@ -226,8 +212,6 @@ class Model:
         #TODO
         if "_id" in self._data:
             self._db.delete_one({"_id": self._data["_id"]})
-            if self._cache is not None:
-                self._cache.invalidar(self._db.name, self._data["_id"])
             del self._data["_id"]
     
     @classmethod
@@ -271,13 +255,10 @@ class Model:
     
     @classmethod
     def find_by_id(cls, id: str) -> Self | None:
-        """
+        """ 
+        NO IMPLEMENTAR HASTA EL TERCER PROYECTO
         Busca un documento por su id utilizando la cache y lo devuelve.
         Si no se encuentra el documento, devuelve None.
-
-        Primero mira la caché; si el documento está, lo sirve de ahí sin
-        consultar MongoDB (y get renueva su caducidad). Si no está, lo lee de
-        MongoDB y lo deja cacheado. Acepta el id como ObjectId o como str.
 
         Parameters
         ----------
@@ -287,28 +268,12 @@ class Model:
         -------
             Self | None
                 Modelo del documento encontrado o None si no se encuentra
-        """
-        if isinstance(id, str):
-            try:
-                id = ObjectId(id)
-            except InvalidId:
-                pass    # no es un ObjectId: se busca tal cual por si el _id es otro tipo
-
-        coleccion = cls._db.name
-        if cls._cache is not None:
-            documento = cls._cache.get(coleccion, id)
-            if documento is not None:
-                return cls(**documento)
-
-        documento = cls._db.find_one({"_id": id})
-        if documento is None:
-            return None
-        if cls._cache is not None:
-            cls._cache.set(coleccion, id, documento)
-        return cls(**documento)
+        """ 
+        #TODO
+        pass
 
     @classmethod
-    def init_class(cls, db_collection: pymongo.collection.Collection, indexes:dict[str,str], required_vars: set[str], admissible_vars: set[str], cache: CacheDocumentos | None = None) -> None:
+    def init_class(cls, db_collection: pymongo.collection.Collection, indexes:dict[str,str], required_vars: set[str], admissible_vars: set[str]) -> None:
         """ 
         Inicializa los atributos de clase en la inicializacion del sistema.
         Aqui se deben inicializar o asegurar los indices. Tambien se puede
@@ -323,15 +288,12 @@ class Model:
                 Set de indices y tipo de indices para la coleccion
             required_vars : set[str]
                 Set de atributos requeridos por el modelo
-            admissible_vars : set[str]
+            admissible_vars : set[str] 
                 Set de atributos admitidos por el modelo
-            cache : CacheDocumentos | None
-                Caché de documentos de la clase. None = sin caché.
         """
         cls._db = db_collection
         cls._required_vars = required_vars
         cls._admissible_vars = admissible_vars
-        cls._cache = cache
         cls._location_var = None
         # TODO
         # Recorrer indexes y crear cada índice segun su tipo: 'unique', 'asc'
@@ -403,7 +365,7 @@ class ModelCursor:
             yield self.model(**doc)
 
 
-def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://localhost:27017/", db_name="abd", scope=globals(), redis_uri: str | None = None) -> None:
+def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://localhost:27017/", db_name="abd", scope=globals()) -> None:
     """ 
     Declara las clases que heredan de Model para cada uno de los 
     modelos de las colecciones definidas en definitions_path.
@@ -419,19 +381,10 @@ def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://local
             uri de conexion a la base de datos
         db_name : str
             nombre de la base de datos
-        redis_uri : str | None
-            uri de conexion a Redis para la caché de documentos. Con None el
-            ODM funciona sin caché (no hace falta Redis).
     """
     #Conexion a la base de datos
     client = MongoClient(mongodb_uri, server_api=ServerApi('1'))
     db = client[db_name]
-
-    # Caché compartida por todas las clases de modelo (opcional)
-    cache = None
-    if redis_uri is not None:
-        cache = CacheDocumentos(redis.Redis.from_url(redis_uri, decode_responses=True))
-        cache.configurar_limite()     # 150 MB y desalojo por tiempo restante
 
     # Leer el YAML
     with open(definitions_path, encoding='utf-8') as f:
@@ -456,7 +409,6 @@ def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://local
             indexes=indexes,
             required_vars=set(spec.get("required_vars", [])),
             admissible_vars=set(spec.get("admissible_vars", [])),
-            cache=cache,
         )
 
 if __name__ == '__main__':
@@ -464,10 +416,8 @@ if __name__ == '__main__':
     # Inicializar base de datos y modelos con initApp
     #TODO
     scope = {}
-    initApp(db_name="abd", scope=scope, redis_uri="redis://localhost:6379/0")
-    # models.yml declara los modelos en minúscula: se buscan sin distinguir mayúsculas
-    por_nombre = {nombre.lower(): clase for nombre, clase in scope.items()}
-    Recinto, Artista, Evento, Asistente = (por_nombre[n] for n in ("recinto", "artista", "evento", "asistente"))
+    initApp(db_name="abd", scope=scope)
+    Recinto, Artista, Evento, Asistente = (scope[n] for n in ("Recinto", "Artista", "Evento", "Asistente"))
     for modelo in (Recinto, Artista, Evento, Asistente):
         modelo._db.delete_many({})
 
@@ -536,11 +486,3 @@ if __name__ == '__main__':
     # Guardar
     recinto_result.save()
     print("Aforo final:", Recinto._db.find_one({"nombre": "WiZink Center"})["aforo"])
-
-    # Caché: el documento recién insertado se sirve sin consultar MongoDB
-    # y save() de una actualización lo invalida (se relee de MongoDB).
-    en_cache = Artista.find_by_id(artista._id)
-    print("find_by_id (caché):", en_cache.nombre)
-    artista.pais = "Inglaterra"
-    artista.save()
-    print("tras actualizar:", Artista.find_by_id(artista._id).pais)
