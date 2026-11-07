@@ -5,6 +5,7 @@ retorno **no deben cambiarse**: son el contrato con el que se corrige.
 """
 
 import redis
+import bson.json_util as json_util
 
 TTL_POR_DEFECTO = 24 * 60 * 60      # 24 horas
 MEMORIA_MAXIMA = "150mb"
@@ -35,8 +36,10 @@ class CacheDocumentos:
 
         Cada acceso debe **renovar la caducidad** a `self.ttl`.
         """
-        # TODO
-        raise NotImplementedError
+        texto = self._r.getex(self.clave(coleccion, id_documento), ex=self.ttl)
+        if texto is None:
+            return None
+        return json_util.loads(texto)
 
     def set(self, coleccion: str, id_documento, documento: dict) -> None:
         """Guarda el documento en la caché con su caducidad.
