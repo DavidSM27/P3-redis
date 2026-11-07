@@ -8,7 +8,7 @@ import redis
 
 TTL_POR_DEFECTO = 24 * 60 * 60      # 24 horas
 MEMORIA_MAXIMA = "150mb"
-POLITICA_DESALOJO = None            # TODO: la política que pide el enunciado
+POLITICA_DESALOJO = "volatile-ttl"           # TODO: la política que pide el enunciado
 
 
 class CacheDocumentos:
