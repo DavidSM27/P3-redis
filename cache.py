@@ -57,5 +57,4 @@ class CacheDocumentos:
 
     def caducidad(self, coleccion: str, id_documento) -> int:
         """Segundos restantes. -1 si no caduca, -2 si no existe."""
-        # TODO
-        raise NotImplementedError
+        return self._r.ttl(self.clave(coleccion, id_documento))
