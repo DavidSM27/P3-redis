@@ -273,8 +273,10 @@ class Model:
             Self | None
                 Modelo del documento encontrado o None si no se encuentra
         """ 
-        #TODO
-        pass
+        try:
+            obj_id = id if isinstance(id, ObjectId) else ObjectId(id)
+        except (InvalidId, TypeError):
+            return None
 
     @classmethod
     def init_class(cls, db_collection: pymongo.collection.Collection, indexes:dict[str,str], required_vars: set[str], admissible_vars: set[str]) -> None:
