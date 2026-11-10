@@ -273,12 +273,17 @@ class Model:
             Self | None
                 Modelo del documento encontrado o None si no se encuentra
         """ 
+        if isinstance(id, str):
+            try:
+                id = ObjectId(id)
+            except InvalidId:
+                pass
+
+
         try:
             obj_id = id if isinstance(id, ObjectId) else ObjectId(id)
         except (InvalidId, TypeError):
             return None
-
-        
 
     @classmethod
     def init_class(cls, db_collection: pymongo.collection.Collection, indexes:dict[str,str], required_vars: set[str], admissible_vars: set[str]) -> None:
@@ -421,7 +426,7 @@ def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://local
 
 if __name__ == '__main__':
     
-    # Inicializar base de datos y modelos con initApp
+    #Inicializar base de datos y modelos con initApp
     #TODO
     scope = {}
     initApp(db_name="abd", scope=scope)
