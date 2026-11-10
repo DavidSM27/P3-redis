@@ -10,13 +10,12 @@ Las firmas y los valores de retorno **no deben cambiarse**.
 import redis
 
 # TODO: mayor que cualquier prioridad presente o futura.
-PRIORIDAD_ABSOLUTA = None
+PRIORIDAD_ABSOLUTA = float("inf")
 
 
 def clave(evento_id) -> str:
     """Clave de Redis. Formato: envivo:sala:<evento>"""
-    # TODO
-    raise NotImplementedError
+    return f"envivo:sala:{evento_id}"
 
 
 def entrar(r: redis.Redis, evento_id, usuario_id, prioridad: float) -> bool:
@@ -25,8 +24,7 @@ def entrar(r: redis.Redis, evento_id, usuario_id, prioridad: float) -> bool:
     Devuelve True si es nuevo en la cola y False si ya estaba (en ese caso se
     le actualiza la prioridad). Un usuario **no puede ocupar dos puestos**.
     """
-    # TODO
-    raise NotImplementedError
+    return r.zadd(clave(evento_id), {str(usuario_id): prioridad}) == 1
 
 
 def atender_siguiente(r: redis.Redis, evento_id, timeout: int = 0):
@@ -36,14 +34,16 @@ def atender_siguiente(r: redis.Redis, evento_id, timeout: int = 0):
     Con `timeout=0` espera indefinidamente. Obtener y eliminar deben ser una
     sola operación, o dos operadores podrían atender al mismo usuario.
     """
-    # TODO
-    raise NotImplementedError
+    resultado = r.bzpopmax(clave(evento_id), timeout=timeout)
+    if resultado is None:
+        return None
+    _, usuario, prioridad = resultado
+    return usuario, prioridad
 
 
 def en_espera(r: redis.Redis, evento_id) -> int:
     """Cuántos usuarios hay en la sala."""
-    # TODO
-    raise NotImplementedError
+    return r.zcard(clave(evento_id))
 
 
 def posicion(r: redis.Redis, evento_id, usuario_id) -> int | None:
@@ -51,5 +51,5 @@ def posicion(r: redis.Redis, evento_id, usuario_id) -> int | None:
 
     El puesto 1 es el que se va a atender antes.
     """
-    # TODO
-    raise NotImplementedError
+    rango = r.zrevrank(clave(evento_id), str(usuario_id))
+    return None if rango is None else rango + 1
