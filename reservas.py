@@ -10,11 +10,25 @@ import redis
 
 SEGUNDOS_POR_DEFECTO = 300
 
+_LIBERAR = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then 
+    return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
+
+_CONFIRMAR = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    redis.call('PERSIST', KEYS[1])
+    return 1
+end 
+return 0
+"""
+
 
 def clave(evento_id, asiento) -> str:
     """Clave de Redis. Formato: envivo:asiento:<evento>:<asiento>"""
-    # TODO
-    raise NotImplementedError
+    return f"envivo:asiento:{evento_id}:{asiento}"
 
 
 def reservar(r: redis.Redis, evento_id, asiento, usuario_id,
@@ -23,20 +37,17 @@ def reservar(r: redis.Redis, evento_id, asiento, usuario_id,
 
     Dos usuarios que lo intenten a la vez: **solo uno** puede conseguirlo.
     """
-    # TODO
-    raise NotImplementedError
+    return bool(r.set(clave(evento_id, asiento), str(usuario_id), nx=True, ex=segundos))
 
 
 def propietario(r: redis.Redis, evento_id, asiento) -> str | None:
     """Quién tiene reservado el asiento, o None si está libre."""
-    # TODO
-    raise NotImplementedError
+    return r.get(clave(evento_id, asiento))
 
 
 def segundos_restantes(r: redis.Redis, evento_id, asiento) -> int:
     """Segundos que quedan. -1 si la reserva es firme, -2 si no hay reserva."""
-    # TODO
-    raise NotImplementedError
+    return r.ttl(clave(evento_id, asiento))
 
 
 def liberar(r: redis.Redis, evento_id, asiento, usuario_id) -> bool:
@@ -47,8 +58,7 @@ def liberar(r: redis.Redis, evento_id, asiento, usuario_id) -> bool:
     **no es correcto**: entre uno y otro la reserva puede caducar y pasar a
     otro usuario, y se le borraría la suya.
     """
-    # TODO
-    raise NotImplementedError
+    return bool(r.eval(_LIBERAR, 1, clave(evento_id, asiento), str(usuario_id)))
 
 
 def confirmar(r: redis.Redis, evento_id, asiento, usuario_id) -> bool:
@@ -56,5 +66,4 @@ def confirmar(r: redis.Redis, evento_id, asiento, usuario_id) -> bool:
 
     Solo puede hacerlo el propietario. Devuelve si se ha confirmado.
     """
-    # TODO
-    raise NotImplementedError
+    return bool(r.eval(_CONFIRMAR, 1, clave(evento_id, asiento), str(usuario_id)))
