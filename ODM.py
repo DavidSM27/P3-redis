@@ -273,6 +273,13 @@ class Model:
             Self | None
                 Modelo del documento encontrado o None si no se encuentra
         """ 
+        if isinstance(id, str):
+            try:
+                id = ObjectId(id)
+            except InvalidId:
+                pass
+
+
         try:
             obj_id = id if isinstance(id, ObjectId) else ObjectId(id)
         except (InvalidId, TypeError):
