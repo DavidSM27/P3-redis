@@ -1,4 +1,3 @@
-
 __author__ = 'Pablo Ramos Criado'
 __students__ = 'David_SanMartin_Mateos_y_Daniel_Lopez_Vallejo'
 
@@ -445,7 +444,7 @@ def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://local
 
 if __name__ == '__main__':
     
-    #Inicializar base de datos y modelos con initApp
+    # Inicializar base de datos y modelos con initApp
     #TODO
     scope = {}
     initApp(db_name="abd", scope=scope)
