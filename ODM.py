@@ -412,7 +412,13 @@ def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://local
             uri de conexion a la base de datos
         db_name : str
             nombre de la base de datos
+        redis_uri : str
+            uri de conexion a la base de datos Redis
     """
+    cache = None
+    if redis_uri is not None:
+        cache = CacheDocumentos(redis.Redis.from_url(redis_uri, decode_responses=True))
+        cache.configurar_limite()
     #Conexion a la base de datos
     client = MongoClient(mongodb_uri, server_api=ServerApi('1'))
     db = client[db_name]
@@ -441,6 +447,7 @@ def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://local
             required_vars=set(spec.get("required_vars", [])),
             admissible_vars=set(spec.get("admissible_vars", [])),
         )
+        scope[model_name]._cache = cache
 
 if __name__ == '__main__':
     
