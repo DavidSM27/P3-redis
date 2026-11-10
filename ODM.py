@@ -197,6 +197,10 @@ class Model:
                 self._data[self._location_var + "_loc"] = getLocationPoint(direccion)
             # insert_one añade el _id a self._data
             self._db.insert_one(self._data)
+
+            if self._cache is not None:
+                self._cache.set(self._db.name, self._data["_id"], self._data)
+
         else:
             # TODO (paso 5): actualizar solo los campos modificados
             if not self._modified_vars:
@@ -207,6 +211,10 @@ class Model:
                 cambios[self._location_var + "_loc"] = getLocationPoint(cambios[self._location_var])
                 self._data[self._location_var + "_loc"] = cambios[self._location_var + "_loc"]
             self._db.update_one({"_id": self._data["_id"]}, {"$set": cambios})
+
+            if self._cache is not None:
+                self._cache.invalidar(self._db.name, self._data["_id"])
+
         self._modified_vars.clear()
 
     def delete(self) -> None:
@@ -279,11 +287,22 @@ class Model:
             except InvalidId:
                 pass
 
+        coleccion = cls._db.name
 
-        try:
-            obj_id = id if isinstance(id, ObjectId) else ObjectId(id)
-        except (InvalidId, TypeError):
+        if cls._cache is not None:
+            documento = cls._cache.get(coleccion, id)
+
+            if documento is not None:
+                return cls(**documento) 
+
+        documento = cls._db.find_one({"_id": id})
+        if documento is None:
             return None
+
+        if cls._cache is not None:
+            cls._cache.set(coleccion, id, documento)
+        return cls(**documento)
+
 
     @classmethod
     def init_class(cls, db_collection: pymongo.collection.Collection, indexes:dict[str,str], required_vars: set[str], admissible_vars: set[str]) -> None:
