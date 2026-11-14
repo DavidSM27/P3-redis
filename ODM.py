@@ -102,7 +102,8 @@ class Model:
     _admissible_vars: set[str]
     _location_var: str | None = None
     _db: pymongo.collection.Collection
-    _internal_vars: set[str] = frozenset(('_modified_vars', '_required_vars', '_admissible_vars', '_db', '_data', '_location_var'))
+    _cache: CacheDocumentos | None = None
+    _internal_vars: set[str] = frozenset(('_modified_vars', '_required_vars', '_admissible_vars', '_db', '_data', '_location_var', '_cache'))
 
     @classmethod
     def _location_field(cls) -> str | None:
@@ -223,6 +224,8 @@ class Model:
         #TODO
         if "_id" in self._data:
             self._db.delete_one({"_id": self._data["_id"]})
+            if self._cache is not None:
+                self._cache.invalidar(self._db.name, self._data["_id"])
             del self._data["_id"]
     
     @classmethod
@@ -396,7 +399,7 @@ class ModelCursor:
             yield self.model(**doc)
 
 
-def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://localhost:27017/", db_name="abd", scope=globals()) -> None:
+def initApp(definitions_path: str = "./models.yml", mongodb_uri="mongodb://localhost:27017/", db_name="abd", scope=globals(), redis_uri=None) -> None:
     """ 
     Declara las clases que heredan de Model para cada uno de los 
     modelos de las colecciones definidas en definitions_path.

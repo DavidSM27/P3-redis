@@ -24,6 +24,7 @@ if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
 for i = 1, #ARGV, 2 do
     redis.call('HSET', KEYS[1], ARGV[i], ARGV[i+1])
 end
+return 1
 """
 
 # Borra el usuario y la sesion que el mismo tuviera abierta
@@ -93,8 +94,10 @@ def actualizar_usuario(r: redis.Redis, usuario: str, **campos) -> bool:
 
     Devuelve False si el usuario no existe.
     """
+    if {"token", "usuario"} & campos.keys():
+        raise ValueError("No se pueden modificar 'token' ni 'usuario'")
     argumentos = []
-    for campo,valor in campo.items():
+    for campo, valor in campos.items():
         argumentos.append(campo)
         argumentos.append(str(valor))
     return bool(r.eval(_ACTUALIZAR, 1, clave_usuario(usuario), *argumentos))

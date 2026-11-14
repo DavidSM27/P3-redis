@@ -11,6 +11,8 @@ TTL_POR_DEFECTO = 24 * 60 * 60      # 24 horas
 MEMORIA_MAXIMA = "150mb"
 POLITICA_DESALOJO = "volatile-ttl"
 
+#Modo canonico: conserva los tipos exactos al ir y volver por un JSON
+_OPCIONES = json_util.CANONICAL_JSON_OPTIONS
 
 class CacheDocumentos:
     """Caché de documentos con caducidad renovada en cada accceso."""
